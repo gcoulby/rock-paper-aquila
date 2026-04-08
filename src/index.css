@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* Class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* CSS variables for Recharts + gauge (can't use Tailwind inside SVG props) */
+:root {
+  --chart-text: #9ca3af;
+  --chart-grid: rgba(128, 128, 128, 0.15);
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #e5e7eb;
+  --tooltip-text: #374151;
+  --gauge-track: rgba(128, 128, 128, 0.15);
+}
+
+html.dark {
+  --chart-text: #6b7280;
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --tooltip-bg: #1f2937;
+  --tooltip-border: #374151;
+  --tooltip-text: #e5e7eb;
+  --gauge-track: rgba(255, 255, 255, 0.08);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* ── Print styles ─────────────────────────────────────────── */
+
+/* Print root is always hidden in screen view */
+#print-root {
+  display: none;
+}
+
+@media print {
+  /* Hide the app, show only the print portal */
+  #root {
+    display: none !important;
+  }
+
+  #print-root {
+    display: block !important;
+  }
+
+  @page {
+    margin: 12mm 14mm;
+    size: A4 portrait;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11px;
+  }
+}
