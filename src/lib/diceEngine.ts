@@ -27,14 +27,67 @@ function parseDamage(D: string): DamageInfo {
   if (!D || D === '-') return { avg: 1, values: [1], probs: [1] }
   if (D === 'D6') return { avg: 3.5, values: [1, 2, 3, 4, 5, 6], probs: [1/6, 1/6, 1/6, 1/6, 1/6, 1/6] }
   if (D === 'D3') return { avg: 2, values: [1, 2, 3], probs: [1/3, 1/3, 1/3] }
+  // Handle compound dice like D6+3 or D3+1
+  const mBonus = D.match(/^(D6|D3)\+(\d+)$/i)
+  if (mBonus) {
+    const isD6 = mBonus[1].toUpperCase() === 'D6'
+    const bonus = parseInt(mBonus[2])
+    const base = isD6 ? [1, 2, 3, 4, 5, 6] : [1, 2, 3]
+    const values = base.map(v => v + bonus)
+    const probs = isD6 ? Array(6).fill(1 / 6) as number[] : Array(3).fill(1 / 3) as number[]
+    const avg = values.reduce((s, v, i) => s + v * probs[i], 0)
+    return { avg, values, probs }
+  }
   const v = parseFloat(D) || 1
   return { avg: v, values: [v], probs: [1] }
 }
 
-export function calcWeaponVsTarget(weapon: Weapon, attacker: Unit, target: Unit): WeaponResult {
+// Returns the maximum possible value for a dice expression (for spike mode)
+function maxDiceVal(expr: string): number {
+  if (!expr || expr === '-') return 1
+  if (expr === 'D6') return 6
+  if (expr === 'D3') return 3
+  const m = expr.match(/^(D6|D3)\+(\d+)$/i)
+  if (m) return (m[1].toUpperCase() === 'D6' ? 6 : 3) + parseInt(m[2])
+  return parseFloat(expr) || 1
+}
+
+function spikeDamageInfo(D: string): DamageInfo {
+  const max = maxDiceVal(D)
+  return { avg: max, values: [max], probs: [1] }
+}
+
+// Convolve two probability distributions, capping at maxDmg (overkill accumulates there)
+export function convolveDists(a: number[], b: number[], maxDmg: number): number[] {
+  const result = new Array(maxDmg + 1).fill(0) as number[]
+  for (let i = 0; i <= maxDmg; i++) {
+    if (!a[i]) continue
+    for (let j = 0; j < b.length; j++) {
+      result[Math.min(i + j, maxDmg)] += a[i] * b[j]
+    }
+  }
+  return result
+}
+
+// Kill probability = P(combined damage from all weapon results >= totalHp)
+export function calcKillProbability(results: WeaponResult[]): number {
+  if (results.length === 0) return 0
+  const maxDmg = results[0].maxPossibleDmg
+  let combined = new Array(maxDmg + 1).fill(0) as number[]
+  combined[0] = 1
+  for (const r of results) {
+    combined = convolveDists(combined, r.dist, maxDmg)
+  }
+  return combined[maxDmg]
+}
+
+export function calcWeaponVsTarget(weapon: Weapon, attacker: Unit, target: Unit, spike = false): WeaponResult {
   const numModels = attacker.modelCount || 1
-  const baseAttacks = weapon.attackVal * (weapon.count || 1) * numModels
-  const dmgInfo = parseDamage(weapon.D)
+  const spikeMaxAttacks = maxDiceVal(weapon.attacks)
+  const baseAttacks = spike
+    ? spikeMaxAttacks * (weapon.count || 1) * numModels
+    : weapon.attackVal * (weapon.count || 1) * numModels
+  const dmgInfo = spike ? spikeDamageInfo(weapon.D) : parseDamage(weapon.D)
   const woundP = woundRoll(weapon.S, target.stats.T)
   const saveFailP = saveFailProb(weapon.AP, target.stats.SV, target.stats.invuln)
   const fnpFailP = target.stats.fnp ? (7 - target.stats.fnp) / 6 : 1

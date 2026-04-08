@@ -3,25 +3,23 @@ import type { WeaponResult } from '../types/roster'
 interface Props {
   results: WeaponResult[]
   defenderName: string
+  spikeMode?: boolean
 }
 
 function pct(v: number, decimals = 0): string {
   return (v * 100).toFixed(decimals) + '%'
 }
 
-export function WeaponSummaryTable({ results, defenderName }: Props) {
+export function WeaponSummaryTable({ results, defenderName: _defenderName, spikeMode = false }: Props) {
   const sorted = [...results].sort((a, b) => b.expectedDmg - a.expectedDmg)
 
   return (
     <div className="mb-5">
-      <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
-        Weapon summary vs {defenderName}
-      </div>
       <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-800/60">
-              {['Weapon', 'Type', 'Att', 'Hit%', 'Wound%', 'Save fail%', 'Chain%', 'Exp dmg'].map(h => (
+              {['Weapon', 'Type', 'Att', 'Hit%', 'Wound%', 'Save fail%', 'Chain%', spikeMode ? 'Spike dmg' : 'Exp dmg'].map(h => (
                 <th
                   key={h}
                   className="text-left font-medium text-gray-400 dark:text-gray-500 py-2 px-2.5 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap"

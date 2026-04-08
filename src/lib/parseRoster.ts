@@ -106,7 +106,11 @@ function extractUnit(sel: Element): Unit | null {
     for (const wp of wps) {
       const w = parseWeapon(wp)
       if (w && !weapons.find(x => x.name === w.name)) {
-        const num = parseInt(ss.getAttribute('number') ?? '1') || 1
+        const ssType = ss.getAttribute('type')
+        // For type="model" sub-selections the weapon is per-model; modelCount already handles
+        // the multiplication so treat count as 1. For type="upgrade" / other, number represents
+        // total of this weapon across the unit.
+        const num = ssType === 'model' ? 1 : (parseInt(ss.getAttribute('number') ?? '1') || 1)
         w.count = num
         weapons.push(w)
       }
@@ -152,7 +156,18 @@ function parseWeapon(wp: Element): Weapon | null {
 
   if (attacks === 'D6') { attackVal = 3.5; isDice = true; diceN = 6 }
   else if (attacks === 'D3') { attackVal = 2; isDice = true; diceN = 3 }
-  else attackVal = parseFloat(attacks) || 1
+  else {
+    // Handle compound dice like D6+1 or D3+2
+    const mBonus = attacks.match(/^(D6|D3)\+(\d+)$/i)
+    if (mBonus) {
+      const base = mBonus[1].toUpperCase() === 'D6' ? 3.5 : 2
+      attackVal = base + parseInt(mBonus[2])
+      isDice = true
+      diceN = mBonus[1].toUpperCase() === 'D6' ? 6 : 3
+    } else {
+      attackVal = parseFloat(attacks) || 1
+    }
+  }
 
   const hitSkill = isRanged ? (chars['BS'] ?? '4+') : (chars['WS'] ?? '4+')
   let hitProb: number

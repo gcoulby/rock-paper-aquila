@@ -11,9 +11,10 @@ import { ThreatGauge } from './components/ThreatGauge'
 import { WeaponSummaryTable } from './components/WeaponSummaryTable'
 import { WeaponBreakdown } from './components/WeaponBreakdown'
 import { ExportModal } from './components/ExportModal'
+import { BestCountersTable } from './components/BestCountersTable'
 
-function computeResults(attacker: Unit, defender: Unit): WeaponResult[] {
-  return attacker.weapons.map((w) => calcWeaponVsTarget(w, attacker, defender))
+function computeResults(attacker: Unit, defender: Unit, spike: boolean): WeaponResult[] {
+  return attacker.weapons.map((w) => calcWeaponVsTarget(w, attacker, defender, spike))
 }
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
   const [direction, setDirection] = useState<'AvsB' | 'BvsA'>('AvsB')
   const [darkMode, setDarkMode] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
   const [exportOpen, setExportOpen] = useState(false)
+  const [spikeMode, setSpikeMode] = useState(false)
 
   useEffect(() => {
     if (darkMode) {
@@ -37,7 +39,7 @@ export default function App() {
   const unitB = armyB && selIdxB !== null ? armyB.units[selIdxB] : null
   const attacker = direction === 'AvsB' ? unitA : unitB
   const defender = direction === 'AvsB' ? unitB : unitA
-  const results: WeaponResult[] = attacker && defender ? computeResults(attacker, defender) : []
+  const results: WeaponResult[] = attacker && defender ? computeResults(attacker, defender, spikeMode) : []
   const totalExpectedDmg = results.reduce((s, r) => s + r.expectedDmg, 0)
   const totalHp = defender ? (defender.stats.W || 1) * (defender.modelCount || 1) : 1
   const bothSelected = unitA !== null && unitB !== null
@@ -118,10 +120,18 @@ export default function App() {
           </div>
         </div>
 
+        {/* Best counters matrix — shown as soon as both armies are loaded */}
+        {armyA && armyB && (
+          <div className="mb-2">
+            <BestCountersTable yourArmy={armyA} enemyArmy={armyB} yourSide="A" />
+            <BestCountersTable yourArmy={armyB} enemyArmy={armyA} yourSide="B" />
+          </div>
+        )}
+
         {/* Placeholder */}
         {!bothSelected && (
-          <div className="py-16 text-gray-400 dark:text-gray-600 text-sm text-center">
-            {!armyA && !armyB ? 'Upload two army lists to begin' : 'Select a unit from each army to compare'}
+          <div className="py-8 text-gray-400 dark:text-gray-600 text-sm text-center">
+            {!armyA && !armyB ? 'Upload two army lists to begin' : 'Select a unit from each army for a detailed matchup breakdown'}
           </div>
         )}
 
@@ -145,14 +155,34 @@ export default function App() {
 
             {results.length > 0 && (
               <>
-                <WeaponSummaryTable results={results} defenderName={defender.name} />
+                {/* Spike mode toggle */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-medium text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wide">
+                    Weapon summary vs {defender.name}
+                  </div>
+                  <button
+                    onClick={() => setSpikeMode(m => !m)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      spikeMode
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 text-amber-700 dark:text-amber-400'
+                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                    title="Spike mode uses maximum dice rolls for attacks and damage"
+                  >
+                    <span className={`w-7 h-3.5 rounded-full transition-colors relative ${spikeMode ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                      <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${spikeMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </span>
+                    {spikeMode ? 'Spike rolls' : 'Average rolls'}
+                  </button>
+                </div>
+                <WeaponSummaryTable results={results} defenderName={defender.name} spikeMode={spikeMode} />
                 <div className="mb-3 font-medium text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wide">
                   Per-weapon probability distributions
                 </div>
                 {[...results]
                   .sort((a, b) => b.expectedDmg - a.expectedDmg)
                   .map((r, i) => (
-                    <WeaponBreakdown key={i} result={r} />
+                    <WeaponBreakdown key={i} result={r} spikeMode={spikeMode} />
                   ))}
               </>
             )}

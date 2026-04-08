@@ -5,6 +5,7 @@ interface Props {
   fnpFailP: number
   chainProb: number
   expectedDmg: number
+  spikeMode?: boolean
 }
 
 function ProbBar({ label, value, color }: { label: string; value: number; color: string }) {
@@ -24,7 +25,7 @@ function ProbBar({ label, value, color }: { label: string; value: number; color:
   )
 }
 
-export function DiceChainBars({ hitP, woundP, saveFailP, fnpFailP, chainProb, expectedDmg }: Props) {
+export function DiceChainBars({ hitP, woundP, saveFailP, fnpFailP, chainProb, expectedDmg, spikeMode = false }: Props) {
   return (
     <div>
       <ProbBar label="To hit" value={hitP} color="#1D9E75" />
@@ -36,8 +37,12 @@ export function DiceChainBars({ hitP, woundP, saveFailP, fnpFailP, chainProb, ex
       <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
         <div className="text-[11px] text-gray-400 dark:text-gray-500">Chain probability</div>
         <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{(chainProb * 100).toFixed(1)}%</div>
-        <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">Expected damage</div>
-        <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{expectedDmg.toFixed(2)}</div>
+        <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+          {spikeMode ? 'Spike damage' : 'Expected damage'}
+        </div>
+        <div className={`text-lg font-semibold ${spikeMode ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          {expectedDmg.toFixed(2)}
+        </div>
       </div>
     </div>
   )

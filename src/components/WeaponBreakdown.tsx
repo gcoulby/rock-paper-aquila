@@ -4,9 +4,10 @@ import { DistributionChart } from './DistributionChart'
 
 interface Props {
   result: WeaponResult
+  spikeMode?: boolean
 }
 
-export function WeaponBreakdown({ result }: Props) {
+export function WeaponBreakdown({ result, spikeMode = false }: Props) {
   const { weapon: w, hitP, woundP, saveFailP, fnpFailP, chainProb, expectedDmg, dist } = result
   const kws = w.keywords
     ? w.keywords.split(',').map(k => k.trim()).filter(k => k && k !== '-')
@@ -35,6 +36,7 @@ export function WeaponBreakdown({ result }: Props) {
           fnpFailP={fnpFailP}
           chainProb={chainProb}
           expectedDmg={expectedDmg}
+          spikeMode={spikeMode}
         />
         <DistributionChart dist={dist} weaponName={w.name} />
       </div>
